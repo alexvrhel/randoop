@@ -19,11 +19,13 @@ import randoop.DummyVisitor;
 import randoop.ExecutionVisitor;
 import randoop.JunitFileWriter;
 import randoop.MultiVisitor;
+import randoop.condition.ConditionCollection;
 import randoop.generation.AbstractGenerator;
 import randoop.generation.ComponentManager;
 import randoop.generation.ForwardGenerator;
 import randoop.generation.RandoopListenerManager;
 import randoop.generation.SeedSequences;
+import randoop.input.toradocu.ToradocuConditionCollection;
 import randoop.instrument.ExercisedClassVisitor;
 import randoop.operation.Operation;
 import randoop.operation.OperationParseException;
@@ -187,6 +189,17 @@ public class GenTests extends GenInputsAbstract {
     Set<String> methodSignatures =
         GenInputsAbstract.getStringSetFromFile(methodlist, "Error while reading method list file");
 
+    /*
+     * Setup pre/post/throws-conditions for operations.
+     * Currently only uses Toradocu generated conditions.
+     */
+    ConditionCollection operationConditions = null;
+    if (GenInputsAbstract.toradocu_conditions != null) {
+      operationConditions =
+          ToradocuConditionCollection.createToradocuConditions(
+              GenInputsAbstract.toradocu_conditions);
+    }
+
     OperationModel operationModel = null;
     try {
       operationModel =
@@ -197,7 +210,8 @@ public class GenTests extends GenInputsAbstract {
               coveredClassnames,
               methodSignatures,
               classNameErrorHandler,
-              GenInputsAbstract.literals_file);
+              GenInputsAbstract.literals_file,
+              operationConditions);
     } catch (OperationParseException e) {
       System.out.printf("%nError: parse exception thrown %s%n", e);
       System.out.println("Exiting Randoop.");
