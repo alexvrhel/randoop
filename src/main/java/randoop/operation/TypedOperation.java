@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import plume.Pair;
 import randoop.ExecutionOutcome;
 import randoop.field.AccessibleField;
 import randoop.reflection.ReflectionPredicate;
@@ -555,12 +556,12 @@ public abstract class TypedOperation implements Operation, Comparable<TypedOpera
    * @param values  the argument values
    * @return the type of the exception whose condition is satisfied by the values
    */
-  public ClassOrInterfaceType getExpectedThrows(Object[] values) {
+  public Pair<Condition, ClassOrInterfaceType> getExpectedThrows(Object[] values) {
     Object[] args = fixArguments(values);
     for (Map.Entry<Condition, ClassOrInterfaceType> entry : throwsConditions.entrySet()) {
       Condition throwsCondition = entry.getKey();
       if (throwsCondition.check(args)) {
-        return entry.getValue();
+        return new Pair<>(entry.getKey(), entry.getValue());
       }
     }
     return null;
@@ -584,10 +585,14 @@ public abstract class TypedOperation implements Operation, Comparable<TypedOpera
   }
 
   public void addConditions(List<Condition> preconditions) {
-    this.preconditions = preconditions;
+    if (preconditions != null) {
+      this.preconditions.addAll(preconditions);
+    }
   }
 
   public void addConditions(Map<Condition, ClassOrInterfaceType> throwsConditions) {
-    this.throwsConditions = throwsConditions;
+    if (throwsConditions != null) {
+      this.throwsConditions.putAll(throwsConditions);
+    }
   }
 }
