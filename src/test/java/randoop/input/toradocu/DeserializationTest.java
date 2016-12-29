@@ -119,7 +119,7 @@ public class DeserializationTest {
           Map.Entry<Condition, ClassOrInterfaceType> entry = iterator.next();
           Condition throwsCondition = entry.getKey();
           Connection connection = new Connection();
-          Object[] args = new Object[] {connection, "dummy"};
+          Object[] args = new Object[] {connection, 1};
           assertTrue("not open, so should be true", throwsCondition.check(args));
           connection.open();
           assert connection.isOpen();

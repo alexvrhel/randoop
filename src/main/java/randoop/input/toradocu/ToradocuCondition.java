@@ -43,14 +43,22 @@ public class ToradocuCondition implements Condition {
 
   @Override
   public boolean check(Object[] values) {
-    Object receiver = values[0];
-    Object[] args;
-    args = Arrays.copyOfRange(values, 1, values.length);
-    Object[] conditionArgs = new Object[] {receiver, args};
     try {
-      return (boolean) conditionMethod.invoke(null, conditionArgs);
-    } catch (IllegalAccessException | InvocationTargetException e) {
+      return (boolean) conditionMethod.invoke(null, values);
+    } catch (IllegalAccessException e) {
       throw new Error("Failure executing Toradocu condition method: " + e);
+    } catch (InvocationTargetException e) {
+      throw new Error(
+          "Failure executing Toradocu condition method: "
+              + conditionMethod
+              + "(invoke threw "
+              + e.getCause()
+              + ")");
     }
+  }
+
+  @Override
+  public String getComment() {
+    return tag.getComment();
   }
 }

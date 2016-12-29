@@ -22,13 +22,22 @@ import randoop.reflection.TypeNames;
 import randoop.types.ClassOrInterfaceType;
 
 /**
- * Created by bjkeller on 12/19/16.
+ * A {@link ConditionCollection} for Toradocu generated conditions.
  */
 public class ToradocuConditionCollection implements ConditionCollection {
 
+  /** The lists of preconditions for constructor/method */
   private final Map<AccessibleObject, List<Condition>> conditionMap;
+
+  /** The condition-exception-type pairs for constructors/methods */
   private final Map<AccessibleObject, Map<Condition, ClassOrInterfaceType>> exceptionMap;
 
+  /**
+   * Creates a {@link ToradocuConditionCollection} for the given preconditions and throws-conditions.
+   *
+   * @param conditionMap  the precondition map
+   * @param exceptionMap  the throws-conditions map
+   */
   private ToradocuConditionCollection(
       Map<AccessibleObject, List<Condition>> conditionMap,
       Map<AccessibleObject, Map<Condition, ClassOrInterfaceType>> exceptionMap) {
@@ -51,7 +60,8 @@ public class ToradocuConditionCollection implements ConditionCollection {
       DocumentedMethod method = methodList.get(methodIndex);
       Class<?> conditionClass = getConditionClass(method);
       Class<?> declaringClass = getClass(method.getContainingClass());
-      AccessibleObject subject = getCallableObject(declaringClass, method);
+      Class<?>[] parameterTypes = getSubjectMethodParameters(method);
+      AccessibleObject subject = getCallableObject(declaringClass, method, parameterTypes);
 
       assert conditionMap.get(subject) == null : "do not visit a method more than once";
 
@@ -60,7 +70,9 @@ public class ToradocuConditionCollection implements ConditionCollection {
       for (int tagIndex = 0; tagIndex < paramTagList.size(); tagIndex++) {
         Tag paramTag = paramTagList.get(tagIndex);
         String methodName = buildConditionMethodName(paramTag, tagIndex, methodIndex);
-        Method conditionMethod = getConditionMethod(conditionClass, methodName, paramTag);
+        Method conditionMethod =
+            getConditionMethod(
+                conditionClass, methodName, paramTag, declaringClass, parameterTypes);
         if (conditionMethod != null) {
           conditionList.add(new ToradocuCondition(paramTag, conditionMethod));
         }
@@ -72,7 +84,9 @@ public class ToradocuConditionCollection implements ConditionCollection {
       for (int tagIndex = 0; tagIndex < throwsTagList.size(); tagIndex++) {
         Tag throwsTag = throwsTagList.get(tagIndex);
         String methodName = buildConditionMethodName(throwsTag, tagIndex, methodIndex);
-        Method conditionMethod = getConditionMethod(conditionClass, methodName, throwsTag);
+        Method conditionMethod =
+            getConditionMethod(
+                conditionClass, methodName, throwsTag, declaringClass, parameterTypes);
         if (conditionMethod != null) {
           ClassOrInterfaceType exceptionType = getType(((ThrowsTag) throwsTag).exception());
           throwsMap.put(new ToradocuCondition(throwsTag, conditionMethod), exceptionType);
@@ -83,10 +97,22 @@ public class ToradocuConditionCollection implements ConditionCollection {
     return new ToradocuConditionCollection(conditionMap, exceptionMap);
   }
 
+  /**
+   * Returns the list of preconditions for the given constructor/method.
+   *
+   * @param member  either a {@code java.lang.reflect.Method} or {@code java.lang.reflect.ConstructorCall}
+   * @return the list of preconditions for the given constructor/method
+   */
   public List<Condition> getPreconditions(AccessibleObject member) {
     return conditionMap.get(member);
   }
 
+  /**
+   * Returns the map from conditions to exceptions for the given constructor/method.
+   *
+   * @param member  either a {@code java.lang.reflect.Method} or {@code java.lang.reflect.ConstructorCall}
+   * @return the map of throws-conditions for the given constructor/method
+   */
   public Map<Condition, ClassOrInterfaceType> getThrowsConditions(AccessibleObject member) {
     return exceptionMap.get(member);
   }
@@ -100,9 +126,9 @@ public class ToradocuConditionCollection implements ConditionCollection {
    * @return the reflection object for the given method or constructor
    */
   private static AccessibleObject getCallableObject(
-      Class<?> declaringClass, DocumentedMethod documentedMethod) {
+      Class<?> declaringClass, DocumentedMethod documentedMethod, Class<?>[] parameterTypes) {
     AccessibleObject subject;
-    Class<?>[] parameterTypes = getSubjectMethodParameters(documentedMethod);
+
     try {
       if (documentedMethod.isConstructor()) {
         subject = declaringClass.getConstructor(parameterTypes);
@@ -142,12 +168,17 @@ public class ToradocuConditionCollection implements ConditionCollection {
    * @param tag  the tag to which the condition belongs
    * @return the reflective method object if the method has a condition
    */
-  private static Method getConditionMethod(Class<?> conditionClass, String methodName, Tag tag) {
+  private static Method getConditionMethod(
+      Class<?> conditionClass,
+      String methodName,
+      Tag tag,
+      Class<?> declaringClass,
+      Class<?>[] subjectParameters) {
     Method conditionMethod = null;
     String condition = tag.getCondition();
     if (condition != null && !condition.isEmpty()) {
       @SuppressWarnings("rawtypes")
-      Class[] parameters = createConditionMethodParameters();
+      Class[] parameters = createConditionMethodParameters(declaringClass, subjectParameters);
       try {
         conditionMethod = conditionClass.getMethod(methodName, parameters);
       } catch (NoSuchMethodException e) {
@@ -212,11 +243,12 @@ public class ToradocuConditionCollection implements ConditionCollection {
    *
    * @return the type parameters for a condition method
    */
-  private static Class<?>[] createConditionMethodParameters() {
+  private static Class<?>[] createConditionMethodParameters(
+      Class<?> declaringClass, Class<?>[] subjectParameters) {
     @SuppressWarnings("rawtypes")
-    Class<?>[] paramTypes = new Class[2];
-    paramTypes[0] = Object.class;
-    paramTypes[1] = (new Object[] {}).getClass();
+    Class<?>[] paramTypes = new Class[subjectParameters.length + 1];
+    paramTypes[0] = declaringClass;
+    System.arraycopy(subjectParameters, 0, paramTypes, 1, subjectParameters.length);
     return paramTypes;
   }
 
