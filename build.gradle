@@ -537,6 +537,7 @@ task validateManual(type: Exec, dependsOn: 'manual') {
 
 /*
  * Copies documentation to docs/ directory.
+ * This should only be done as part of the release process.
  * When committed and pushed, these files will be visible as
  * https://randoop.github.io/randoop/ .
  */
@@ -600,7 +601,7 @@ task checklink(type: Exec, dependsOn: 'clone') {
 
 
 task installGitHooks(type: Copy) {
-  from 'scripts/pre-commit'
+  from 'scripts/'
   into '.git/hooks'
 }
 /* Always run this task. */
